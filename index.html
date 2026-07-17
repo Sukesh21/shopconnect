@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shop Connect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#F5F6EF;
+    --ink:#132019;
+    --ink-soft:#5B6A5F;
+    --card:#FFFFFF;
+    --line:#E3E6DA;
+    --lime:#C9F135;
+    --lime-deep:#8FBF1B;
+    --coral:#FF6B4A;
+    --coral-soft:#FFE4DB;
+    --radius:12px;
+    --shadow:0 12px 32px rgba(19,32,25,0.10);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
+  h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;letter-spacing:-0.01em;color:var(--ink);}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  button{font-family:inherit;cursor:pointer;}
+  ::selection{background:var(--lime);}
+  .view{display:none;}
+  .view.active{display:block;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px;}
+
+  /* ---------- topbar ---------- */
+  .topbar{background:var(--ink);color:var(--bg);padding:16px 0;}
+  .topbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .mark{width:36px;height:36px;border-radius:8px;background:var(--lime);display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--ink);font-size:17px;}
+  .brand .name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;}
+  .top-actions{display:flex;align-items:center;gap:12px;}
+  .top-actions button{background:none;border:1px solid rgba(245,246,239,0.25);color:var(--bg);padding:8px 15px;border-radius:999px;font-size:13px;font-weight:500;transition:.15s;}
+  .top-actions button:hover{border-color:var(--lime);color:var(--lime);}
+  .cart-btn{position:relative;}
+  .cart-badge{position:absolute;top:-7px;right:-7px;background:var(--coral);color:#fff;font-size:10.5px;font-weight:700;border-radius:999px;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;padding:0 4px;}
+
+  /* ---------- home ---------- */
+  .hero{padding:76px 0 60px;position:relative;overflow:hidden;background:radial-gradient(600px 260px at 88% -10%, rgba(201,241,53,0.35), transparent), var(--bg);}
+  .hero .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--coral);margin-bottom:14px;}
+  .hero h1{font-size:clamp(34px,5vw,54px);line-height:1.05;margin:0 0 16px;max-width:15ch;}
+  .hero p.sub{font-size:16.5px;color:var(--ink-soft);max-width:50ch;line-height:1.6;margin:0 0 36px;}
+  .panel-choice{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:680px;}
+  @media(max-width:600px){.panel-choice{grid-template-columns:1fr;}}
+  .choice-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:26px 24px;box-shadow:var(--shadow);text-align:left;transition:.18s ease;border-top:4px solid var(--ink);}
+  .choice-card:nth-child(2){border-top-color:var(--coral);}
+  .choice-card:hover{transform:translateY(-3px);}
+  .choice-card .num{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);}
+  .choice-card h3{font-size:21px;margin:8px 0 8px;}
+  .choice-card p{font-size:14px;color:var(--ink-soft);margin:0 0 18px;line-height:1.55;}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--ink);color:var(--bg);border:none;padding:12px 22px;border-radius:8px;font-weight:600;font-size:14px;transition:.15s;}
+  .btn:hover{background:#25382C;}
+  .btn.lime{background:var(--lime);color:var(--ink);}
+  .btn.lime:hover{background:var(--lime-deep);}
+  .btn.coral{background:var(--coral);color:#fff;}
+  .btn.coral:hover{background:#e85936;}
+  .btn.outline{background:transparent;color:var(--ink);border:1.5px solid var(--ink);}
+  .btn.outline:hover{background:var(--ink);color:var(--bg);}
+  .btn.block{width:100%;}
+  .btn.small{padding:8px 14px;font-size:13px;}
+  .btn:disabled{opacity:.55;cursor:not-allowed;}
+
+  /* ---------- auth card ---------- */
+  .auth-shell{padding:56px 0 80px;}
+  .auth-card{max-width:440px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
+  .auth-card .head{background:var(--ink);color:var(--bg);padding:22px 28px;border-bottom:3px solid var(--lime);}
+  .auth-card .head .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--lime);text-transform:uppercase;letter-spacing:.1em;}
+  .auth-card .head h2{color:var(--bg);margin:6px 0 0;font-size:23px;}
+  .tabs{display:flex;border-bottom:1px solid var(--line);}
+  .tab{flex:1;padding:14px;text-align:center;background:none;border:none;font-weight:600;font-size:14px;color:var(--ink-soft);border-bottom:2px solid transparent;}
+  .tab.active{color:var(--ink);border-bottom-color:var(--coral);}
+  .form-body{padding:26px 28px 30px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;}
+  .field input{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:7px;font-size:15px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);}
+  .field input:focus{outline:none;border-color:var(--lime-deep);background:#fff;}
+  .form-msg{font-size:13.5px;padding:10px 12px;border-radius:7px;margin-bottom:16px;display:none;}
+  .form-msg.show{display:block;}
+  .form-msg.err{background:var(--coral-soft);color:#B8371A;border:1px solid #FFC7B4;}
+  .form-msg.ok{background:#E4F4D6;color:#4C7A1E;border:1px solid #C9E8AA;}
+  .back-link{display:block;text-align:center;margin-top:16px;font-size:13px;color:var(--ink-soft);text-decoration:none;cursor:pointer;}
+  .back-link:hover{color:var(--ink);}
+
+  /* ---------- dashboards common ---------- */
+  .dash-header{background:var(--ink);color:var(--bg);padding:26px 0;}
+  .dash-header .wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;}
+  .dash-header .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--lime);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;}
+  .dash-header h2{color:var(--bg);margin:0;font-size:24px;}
+  .dash-body{padding:32px 0 70px;}
+  .sub-tabs{display:flex;gap:8px;margin-bottom:24px;}
+  .sub-tab{background:var(--card);border:1.5px solid var(--line);padding:10px 18px;border-radius:999px;font-size:13.5px;font-weight:600;color:var(--ink-soft);}
+  .sub-tab.active{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+
+  /* ---------- owner: items manager ---------- */
+  .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px;}
+  .item-row{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;display:flex;gap:16px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+  .item-row .thumb{width:60px;height:60px;border-radius:8px;object-fit:cover;background:var(--bg);border:1px solid var(--line);flex:none;}
+  .item-row .thumb.placeholder{display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:10px;text-align:center;}
+  .item-row .info{flex:1;min-width:160px;}
+  .item-row .info .nm{font-weight:700;font-size:15.5px;}
+  .item-row .info .pr{font-family:'IBM Plex Mono',monospace;color:var(--coral);font-weight:600;margin-top:2px;}
+  .item-row .edit-fields{flex:1;display:flex;gap:10px;flex-wrap:wrap;min-width:200px;}
+  .item-row .edit-fields input{padding:9px 11px;border:1.5px solid var(--line);border-radius:7px;font-size:14px;background:var(--bg);}
+  .item-row .edit-fields input.f-name{flex:2;min-width:120px;}
+  .item-row .edit-fields input.f-price{flex:1;min-width:80px;}
+  .item-row .row-actions{display:flex;gap:8px;flex:none;}
+  .photo-picker{display:flex;align-items:center;gap:10px;flex:none;}
+  .photo-picker .photo-preview, .photo-picker .photo-preview-empty{width:56px;height:56px;flex:none;}
+  .photo-pick-btn{white-space:nowrap;}
+
+  /* ---------- owner: orders ---------- */
+  .order-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden;}
+  .order-card .o-head{padding:16px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  .order-card .o-head .who{font-weight:700;font-size:15.5px;}
+  .order-card .o-head .when{font-size:12px;color:var(--ink-soft);margin-top:2px;font-family:'IBM Plex Mono',monospace;}
+  .order-card .o-head .total{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--coral);}
+  .order-card .o-detail{display:none;border-top:1px solid var(--line);padding:14px 20px;}
+  .order-card .o-detail.show{display:block;}
+  .order-line{display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px dashed var(--line);}
+  .order-line:last-child{border-bottom:none;}
+  .empty-note{padding:36px 24px;text-align:center;color:var(--ink-soft);font-size:14.5px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);}
+
+  /* ---------- customer: product grid ---------- */
+  .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;}
+  .product-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;}
+  .product-card .pimg{width:100%;aspect-ratio:1.3/1;object-fit:cover;background:var(--bg);}
+  .product-card .pimg.placeholder{display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:12px;}
+  .product-card .pbody{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;flex:1;}
+  .product-card .pname{font-weight:700;font-size:15.5px;line-height:1.25;}
+  .price-tag{position:relative;display:inline-flex;align-items:center;background:var(--lime);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:13.5px;padding:5px 14px 5px 18px;border-radius:3px 10px 10px 3px;transform:rotate(-2deg);width:fit-content;}
+  .price-tag::before{content:'';position:absolute;left:5px;top:50%;transform:translateY(-50%);width:6px;height:6px;border-radius:50%;background:var(--card);}
+  .qty-stepper{display:flex;align-items:center;gap:0;border:1.5px solid var(--line);border-radius:8px;width:fit-content;}
+  .qty-stepper button{background:none;border:none;width:32px;height:32px;font-size:16px;font-weight:700;color:var(--ink);}
+  .qty-stepper button:hover{color:var(--coral);}
+  .qty-stepper .qval{width:32px;text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;}
+  .add-to-cart-btn{margin-top:auto;}
+
+  /* ---------- customer: cart ---------- */
+  .cart-list{display:flex;flex-direction:column;gap:12px;margin-bottom:22px;}
+  .cart-item{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .cart-item .thumb{width:52px;height:52px;border-radius:8px;object-fit:cover;background:var(--bg);border:1px solid var(--line);flex:none;}
+  .cart-item .thumb.placeholder{display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:9px;}
+  .cart-item .ci-info{flex:1;min-width:120px;}
+  .cart-item .ci-info .nm{font-weight:700;font-size:15px;}
+  .cart-item .ci-info .pr{font-family:'IBM Plex Mono',monospace;color:var(--ink-soft);font-size:13px;margin-top:2px;}
+  .cart-item .line-total{font-family:'IBM Plex Mono',monospace;font-weight:700;min-width:70px;text-align:right;}
+  .remove-x{background:none;border:none;color:var(--coral);font-size:13px;font-weight:700;padding:4px 8px;}
+  .cart-summary{background:var(--ink);color:var(--bg);border-radius:var(--radius);padding:22px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
+  .cart-summary .grand{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:var(--lime);}
+  .cart-summary .label{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:#B7C2B9;font-family:'IBM Plex Mono',monospace;}
+
+  footer{background:var(--ink);color:#B7C2B9;padding:24px 0;font-size:13px;text-align:center;}
+  footer strong{color:var(--bg);}
+
+  .spinner{display:inline-block;width:15px;height:15px;border-radius:50%;border:2px solid rgba(19,32,25,0.3);border-top-color:var(--ink);animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+  .btn.coral .spinner, .btn.lime .spinner{border-color:rgba(255,255,255,0.4);border-top-color:#fff;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--lime);padding:12px 22px;border-radius:999px;font-size:13.5px;font-weight:600;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.25s;z-index:50;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <div class="brand">
+      <div class="mark">S</div>
+      <div class="name">Shop Connect</div>
+    </div>
+    <div class="top-actions" id="topActions">
+      <button onclick="goHome()">Home</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= HOME ================= -->
+<section class="view active" id="view-home">
+  <div class="hero">
+    <div class="wrap">
+      <div class="eyebrow">Local Shop · Online Orders</div>
+      <h1>Browse. Cart. Order — straight to the counter.</h1>
+      <p class="sub">Owners list what's on the shelf, customers pick what they need and place the order, and it all lands in one place. No middlemen, no app store.</p>
+      <div class="panel-choice">
+        <div class="choice-card">
+          <div class="num">01 / Panel</div>
+          <h3>Customer Panel</h3>
+          <p>Sign up with your name and phone number, then log in to browse items and place an order.</p>
+          <button class="btn lime block" onclick="showView('view-customer-auth'); switchCustomerTab('login')">Continue as Customer</button>
+        </div>
+        <div class="choice-card">
+          <div class="num">02 / Panel</div>
+          <h3>Owner Panel</h3>
+          <p>Log in to add items to the shop and view orders placed by customers.</p>
+          <button class="btn outline block" onclick="showView('view-owner-auth')">Continue as Owner</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= OWNER LOGIN (no signup) ================= -->
+<section class="view" id="view-owner-auth">
+  <div class="auth-shell">
+    <div class="wrap">
+      <div class="auth-card">
+        <div class="head">
+          <div class="eyebrow">Owner Panel</div>
+          <h2>Owner Login</h2>
+        </div>
+        <div class="form-body">
+          <div class="form-msg" id="msg-owner-login"></div>
+          <div class="field">
+            <label>Owner ID</label>
+            <input type="text" id="owner-id" placeholder="Owner ID" />
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="owner-password" placeholder="Password" />
+          </div>
+          <button class="btn block" id="btn-owner-login" onclick="ownerLogin()">Log In</button>
+          <a class="back-link" onclick="goHome()">&larr; Back to home</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CUSTOMER AUTH ================= -->
+<section class="view" id="view-customer-auth">
+  <div class="auth-shell">
+    <div class="wrap">
+      <div class="auth-card">
+        <div class="head">
+          <div class="eyebrow">Customer Panel</div>
+          <h2>Welcome</h2>
+        </div>
+        <div class="tabs">
+          <button class="tab active" id="tab-customer-login" onclick="switchCustomerTab('login')">Log In</button>
+          <button class="tab" id="tab-customer-signup" onclick="switchCustomerTab('signup')">Sign Up</button>
+        </div>
+
+        <div class="form-body" id="form-customer-login">
+          <div class="form-msg" id="msg-customer-login"></div>
+          <div class="field">
+            <label>Phone Number</label>
+            <input type="tel" id="login-customer-phone" placeholder="10-digit phone number" />
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="login-customer-password" placeholder="Your password" />
+          </div>
+          <button class="btn lime block" id="btn-customer-login" onclick="customerLogin()">Log In</button>
+          <a class="back-link" onclick="goHome()">&larr; Back to home</a>
+        </div>
+
+        <div class="form-body" id="form-customer-signup" style="display:none;">
+          <div class="form-msg" id="msg-customer-signup"></div>
+          <div class="field">
+            <label>Full Name</label>
+            <input type="text" id="signup-customer-name" placeholder="Your full name" />
+          </div>
+          <div class="field">
+            <label>Phone Number</label>
+            <input type="tel" id="signup-customer-phone" placeholder="10-digit phone number" />
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="signup-customer-password" placeholder="Choose a password" />
+          </div>
+          <button class="btn lime block" id="btn-customer-signup" onclick="customerSignup()">Create Account</button>
+          <a class="back-link" onclick="goHome()">&larr; Back to home</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= OWNER DASHBOARD ================= -->
+<section class="view" id="view-owner-dash">
+  <div class="dash-header">
+    <div class="wrap">
+      <div>
+        <div class="eyebrow">Owner Panel</div>
+        <h2>Shop Dashboard</h2>
+      </div>
+      <button class="btn outline" style="background:transparent;color:var(--bg);border-color:rgba(245,246,239,0.35);" onclick="logout()">Log Out</button>
+    </div>
+  </div>
+  <div class="dash-body">
+    <div class="wrap">
+      <div class="sub-tabs">
+        <button class="sub-tab active" id="subtab-items" onclick="switchOwnerTab('items')">Manage Items</button>
+        <button class="sub-tab" id="subtab-orders" onclick="switchOwnerTab('orders')">Orders</button>
+      </div>
+
+      <!-- ITEMS MANAGER -->
+      <div id="owner-panel-items">
+        <div class="panel-head">
+          <h3 style="margin:0;">Items in the Shop</h3>
+          <button class="btn lime small" onclick="addNewItemRow()">+ Add Item</button>
+        </div>
+        <div id="owner-items-list"><div class="empty-note">Loading items…</div></div>
+      </div>
+
+      <!-- ORDERS -->
+      <div id="owner-panel-orders" style="display:none;">
+        <div class="panel-head">
+          <h3 style="margin:0;">Customer Orders</h3>
+          <button class="btn outline small" onclick="loadOwnerOrders()">Refresh</button>
+        </div>
+        <div id="owner-orders-list"><div class="empty-note">Loading orders…</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CUSTOMER DASHBOARD ================= -->
+<section class="view" id="view-customer-dash">
+  <div class="dash-header">
+    <div class="wrap">
+      <div>
+        <div class="eyebrow">Customer Panel</div>
+        <h2 id="customer-dash-name">—</h2>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button class="btn lime cart-btn" onclick="switchCustomerView('cart')">
+          Cart <span class="cart-badge" id="cartBadge">0</span>
+        </button>
+        <button class="btn outline" style="background:transparent;color:var(--bg);border-color:rgba(245,246,239,0.35);" onclick="logout()">Log Out</button>
+      </div>
+    </div>
+  </div>
+  <div class="dash-body">
+    <div class="wrap">
+      <div class="sub-tabs">
+        <button class="sub-tab active" id="subtab-shop" onclick="switchCustomerView('shop')">Shop</button>
+        <button class="sub-tab" id="subtab-cart" onclick="switchCustomerView('cart')">My Cart</button>
+      </div>
+
+      <!-- SHOP -->
+      <div id="customer-panel-shop">
+        <div class="product-grid" id="product-grid"><div class="empty-note">Loading items…</div></div>
+      </div>
+
+      <!-- CART -->
+      <div id="customer-panel-cart" style="display:none;">
+        <div class="cart-list" id="cart-list"></div>
+        <div class="cart-summary" id="cart-summary" style="display:none;">
+          <div>
+            <div class="label">Total</div>
+            <div class="grand" id="cart-total">₹0</div>
+          </div>
+          <button class="btn coral" id="btn-place-order" onclick="placeOrder()">Place Order</button>
+        </div>
+        <div id="cart-empty-note"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap"><strong>Shop Connect</strong> · Connecting shop owners and customers, one order at a time.</div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ---------------------------------------------------------
+  // Supabase setup
+  // ---------------------------------------------------------
+  const SUPABASE_URL = 'https://fvddbnlfpsxbdfikdqsg.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_ooEYILV302I-E-2zX9aRAQ_AfrhqQ12';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // Fixed owner credentials (no signup for the owner)
+  const OWNER_ID = 'abc123';
+  const OWNER_PASSWORD = '123456';
+
+  // ---------------------------------------------------------
+  // View router
+  // ---------------------------------------------------------
+  function showView(id){
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+  function goHome(){ showView('view-home'); }
+
+  function toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(()=> t.classList.remove('show'), 2200);
+  }
+
+  function setMsg(elId, text, type){
+    const el = document.getElementById(elId);
+    el.textContent = text;
+    el.className = 'form-msg show ' + (type==='ok' ? 'ok':'err');
+  }
+  function clearMsg(elId){ document.getElementById(elId).className = 'form-msg'; }
+  function setBusy(btnId, busy, label){
+    const btn = document.getElementById(btnId);
+    btn.disabled = busy;
+    btn.innerHTML = busy ? '<span class="spinner"></span>Please wait…' : label;
+  }
+  function escapeHtml(str){
+    if(str === null || str === undefined) return '';
+    return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+  }
+  function money(n){ return '₹' + Number(n).toFixed(2).replace(/\.00$/,''); }
+
+  // ---------------------------------------------------------
+  // Session
+  // ---------------------------------------------------------
+  let session = { role:null, name:null, phone:null };
+  let cart = {}; // { itemId: { name, price, image_url, qty } }
+
+  function logout(){
+    session = { role:null, name:null, phone:null };
+    cart = {};
+    goHome();
+  }
+
+  // ---------------------------------------------------------
+  // OWNER LOGIN
+  // ---------------------------------------------------------
+  function ownerLogin(){
+    clearMsg('msg-owner-login');
+    const id = document.getElementById('owner-id').value.trim();
+    const pass = document.getElementById('owner-password').value;
+    if(id === OWNER_ID && pass === OWNER_PASSWORD){
+      session = { role:'owner', name:'Shop Owner', phone:null };
+      document.getElementById('owner-id').value='';
+      document.getElementById('owner-password').value='';
+      showView('view-owner-dash');
+      switchOwnerTab('items');
+      loadOwnerItems();
+    } else {
+      setMsg('msg-owner-login', 'Incorrect owner ID or password.', 'err');
+    }
+  }
+
+  function switchOwnerTab(which){
+    document.getElementById('subtab-items').classList.toggle('active', which==='items');
+    document.getElementById('subtab-orders').classList.toggle('active', which==='orders');
+    document.getElementById('owner-panel-items').style.display = which==='items' ? 'block':'none';
+    document.getElementById('owner-panel-orders').style.display = which==='orders' ? 'block':'none';
+    if(which==='orders') loadOwnerOrders();
+  }
+
+  // ---------------------------------------------------------
+  // OWNER: manage items
+  // ---------------------------------------------------------
+  let ownerItemsCache = [];
+  let unsavedRowCount = 0;
+
+  async function loadOwnerItems(){
+    const holder = document.getElementById('owner-items-list');
+    holder.innerHTML = '<div class="empty-note">Loading items…</div>';
+    const { data, error } = await sb.from('items').select('*').order('created_at', {ascending:false});
+    if(error){ holder.innerHTML = '<div class="empty-note">Could not load items: ' + error.message + '</div>'; return; }
+    ownerItemsCache = data || [];
+    renderOwnerItems();
+  }
+
+  function renderOwnerItems(){
+    const holder = document.getElementById('owner-items-list');
+    if(ownerItemsCache.length === 0){
+      holder.innerHTML = '<div class="empty-note">No items yet. Click "+ Add Item" to add your first product.</div>';
+      return;
+    }
+    holder.innerHTML = ownerItemsCache.map(item => renderOwnerItemRow(item)).join('');
+  }
+
+  function renderOwnerItemRow(item, editing){
+    const imgTag = item.image_url
+      ? `<img class="thumb" src="${escapeHtml(item.image_url)}" onerror="this.outerHTML='<div class=&quot;thumb placeholder&quot;>No image</div>'" />`
+      : `<div class="thumb placeholder">No image</div>`;
+
+    if(editing){
+      return `<div class="item-row" data-id="${item.id}">
+        <div class="photo-picker">
+          <img class="thumb photo-preview" id="preview-${item.id}" src="${escapeHtml(item.image_url||'')}" style="${item.image_url?'':'display:none;'}" onerror="this.style.display='none';" />
+          <div class="thumb placeholder photo-preview-empty" id="preview-empty-${item.id}" style="${item.image_url?'display:none;':''}">No photo</div>
+          <label class="btn outline small photo-pick-btn">
+            Choose Photo
+            <input type="file" accept="image/*" class="f-photo" style="display:none;" onchange="handlePhotoChosen(this, '${item.id}')" />
+          </label>
+        </div>
+        <div class="edit-fields">
+          <input class="f-name" type="text" placeholder="Item name" value="${escapeHtml(item.name||'')}" />
+          <input class="f-price" type="number" step="0.01" placeholder="Price" value="${item.price ?? ''}" />
+        </div>
+        <div class="row-actions">
+          <button class="btn lime small" onclick="saveExistingItem('${item.id}', this)">Save</button>
+          <button class="btn outline small" onclick="renderOwnerItems()">Cancel</button>
+        </div>
+      </div>`;
+    }
+    return `<div class="item-row" data-id="${item.id}">
+      ${imgTag}
+      <div class="info">
+        <div class="nm">${escapeHtml(item.name)}</div>
+        <div class="pr">${money(item.price)}</div>
+      </div>
+      <div class="row-actions">
+        <button class="btn outline small" onclick="editExistingItem('${item.id}')">Edit</button>
+        <button class="btn small" style="background:var(--coral-soft);color:#B8371A;" onclick="deleteItem('${item.id}')">Delete</button>
+      </div>
+    </div>`;
+  }
+
+  function editExistingItem(id){
+    const item = ownerItemsCache.find(i => i.id === id);
+    const holder = document.getElementById('owner-items-list');
+    const rowEl = holder.querySelector(`.item-row[data-id="${id}"]`);
+    rowEl.outerHTML = renderOwnerItemRow(item, true);
+  }
+
+  // Holds the freshly picked File (not yet uploaded) keyed by row id, plus its object-URL preview
+  const pickedPhotos = {};
+
+  function handlePhotoChosen(inputEl, rowKey){
+    const file = inputEl.files && inputEl.files[0];
+    if(!file) return;
+    pickedPhotos[rowKey] = file;
+    const previewUrl = URL.createObjectURL(file);
+    const previewImg = document.getElementById('preview-' + rowKey);
+    const previewEmpty = document.getElementById('preview-empty-' + rowKey);
+    if(previewImg){ previewImg.src = previewUrl; previewImg.style.display = 'block'; }
+    if(previewEmpty){ previewEmpty.style.display = 'none'; }
+  }
+
+  // Downscales a photo before upload so phone camera photos don't eat data/storage
+  function resizeImage(file, maxDim, quality){
+    maxDim = maxDim || 900; quality = quality || 0.82;
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = (e) => { img.src = e.target.result; };
+      reader.onerror = reject;
+      img.onload = () => {
+        let { width, height } = img;
+        if(width > height && width > maxDim){ height = Math.round(height * (maxDim/width)); width = maxDim; }
+        else if(height > maxDim){ width = Math.round(width * (maxDim/height)); height = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => resolve(blob), 'image/jpeg', quality);
+      };
+      img.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Resizes + uploads a picked photo to the "item-images" Supabase Storage bucket, returns its public URL
+  async function uploadItemPhoto(file){
+    const blob = await resizeImage(file);
+    const path = `items/${Date.now()}-${Math.random().toString(36).slice(2,8)}.jpg`;
+    const { error: uploadErr } = await sb.storage.from('item-images').upload(path, blob, { contentType:'image/jpeg' });
+    if(uploadErr) throw uploadErr;
+    const { data } = sb.storage.from('item-images').getPublicUrl(path);
+    return data.publicUrl;
+  }
+
+  async function saveExistingItem(id, btnEl){
+    const rowEl = btnEl.closest('.item-row');
+    const name = rowEl.querySelector('.f-name').value.trim();
+    const price = parseFloat(rowEl.querySelector('.f-price').value);
+    if(!name || isNaN(price)){ toast('Enter a name and a valid price.'); return; }
+
+    btnEl.disabled = true; btnEl.innerHTML = '<span class="spinner"></span>Saving…';
+    try{
+      const existing = ownerItemsCache.find(i => i.id === id);
+      let image_url = existing ? existing.image_url : null;
+      const picked = pickedPhotos[id];
+      if(picked){ image_url = await uploadItemPhoto(picked); delete pickedPhotos[id]; }
+
+      const { error } = await sb.from('items').update({ name, price, image_url }).eq('id', id);
+      if(error) throw error;
+      toast('Item updated.');
+      await loadOwnerItems();
+    }catch(err){
+      toast('Could not save: ' + err.message);
+      btnEl.disabled=false; btnEl.textContent='Save';
+    }
+  }
+
+  function addNewItemRow(){
+    unsavedRowCount++;
+    const holder = document.getElementById('owner-items-list');
+    if(ownerItemsCache.length === 0) holder.innerHTML = '';
+    const tempId = 'new-' + unsavedRowCount;
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.setAttribute('data-temp', tempId);
+    row.innerHTML = `
+      <div class="photo-picker">
+        <img class="thumb photo-preview" id="preview-${tempId}" style="display:none;" />
+        <div class="thumb placeholder photo-preview-empty" id="preview-empty-${tempId}">No photo</div>
+        <label class="btn outline small photo-pick-btn">
+          Choose Photo
+          <input type="file" accept="image/*" class="f-photo" style="display:none;" onchange="handlePhotoChosen(this, '${tempId}')" />
+        </label>
+      </div>
+      <div class="edit-fields">
+        <input class="f-name" type="text" placeholder="Item name" />
+        <input class="f-price" type="number" step="0.01" placeholder="Price" />
+      </div>
+      <div class="row-actions">
+        <button class="btn lime small" onclick="saveNewItem(this, '${tempId}')">Save</button>
+        <button class="btn outline small" onclick="delete pickedPhotos['${tempId}']; this.closest('.item-row').remove()">Cancel</button>
+      </div>`;
+    holder.prepend(row);
+  }
+
+  async function saveNewItem(btnEl, tempId){
+    const rowEl = btnEl.closest('.item-row');
+    const name = rowEl.querySelector('.f-name').value.trim();
+    const price = parseFloat(rowEl.querySelector('.f-price').value);
+    if(!name || isNaN(price)){ toast('Enter a name and a valid price.'); return; }
+
+    btnEl.disabled = true; btnEl.innerHTML = '<span class="spinner"></span>Saving…';
+    try{
+      let image_url = null;
+      const picked = pickedPhotos[tempId];
+      if(picked){ image_url = await uploadItemPhoto(picked); delete pickedPhotos[tempId]; }
+
+      const { error } = await sb.from('items').insert({ name, price, image_url });
+      if(error) throw error;
+      toast('Item added.');
+      await loadOwnerItems();
+    }catch(err){
+      toast('Could not save: ' + err.message);
+      btnEl.disabled=false; btnEl.textContent='Save';
+    }
+  }
+
+  async function deleteItem(id){
+    if(!confirm('Remove this item from the shop?')) return;
+    const { error } = await sb.from('items').delete().eq('id', id);
+    if(error){ toast('Could not delete: ' + error.message); return; }
+    toast('Item removed.');
+    await loadOwnerItems();
+  }
+
+  // ---------------------------------------------------------
+  // OWNER: orders
+  // ---------------------------------------------------------
+  async function loadOwnerOrders(){
+    const holder = document.getElementById('owner-orders-list');
+    holder.innerHTML = '<div class="empty-note">Loading orders…</div>';
+    const { data, error } = await sb.from('orders').select('*').order('created_at', {ascending:false});
+    if(error){ holder.innerHTML = '<div class="empty-note">Could not load orders: ' + error.message + '</div>'; return; }
+    if(!data || data.length===0){ holder.innerHTML = '<div class="empty-note">No orders placed yet.</div>'; return; }
+
+    holder.innerHTML = data.map(o => {
+      const items = Array.isArray(o.items) ? o.items : [];
+      const lines = items.map(it => `<div class="order-line">
+          <span>${escapeHtml(it.name)} × ${it.qty}</span>
+          <span class="mono">${money(it.price * it.qty)}</span>
+        </div>`).join('');
+      const when = new Date(o.created_at).toLocaleString();
+      return `<div class="order-card">
+        <div class="o-head">
+          <div>
+            <div class="who">${escapeHtml(o.customer_name)} · ${escapeHtml(o.customer_phone)}</div>
+            <div class="when">${when}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div class="total">${money(o.total)}</div>
+            <button class="btn outline small" onclick="toggleOrderDetail(this)">View</button>
+          </div>
+        </div>
+        <div class="o-detail">${lines}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleOrderDetail(btnEl){
+    const detail = btnEl.closest('.order-card').querySelector('.o-detail');
+    const showing = detail.classList.toggle('show');
+    btnEl.textContent = showing ? 'Hide' : 'View';
+  }
+
+  // ---------------------------------------------------------
+  // CUSTOMER: signup / login
+  // ---------------------------------------------------------
+  function switchCustomerTab(which){
+    document.getElementById('tab-customer-login').classList.toggle('active', which==='login');
+    document.getElementById('tab-customer-signup').classList.toggle('active', which==='signup');
+    document.getElementById('form-customer-login').style.display = which==='login' ? 'block':'none';
+    document.getElementById('form-customer-signup').style.display = which==='signup' ? 'block':'none';
+  }
+
+  async function customerSignup(){
+    clearMsg('msg-customer-signup');
+    const name = document.getElementById('signup-customer-name').value.trim();
+    const phone = document.getElementById('signup-customer-phone').value.trim();
+    const pass = document.getElementById('signup-customer-password').value;
+    if(!name || !phone || !pass){ setMsg('msg-customer-signup','Fill in your name, phone number, and password.','err'); return; }
+
+    setBusy('btn-customer-signup', true);
+    try{
+      const { data: existing, error: checkErr } = await sb.from('customers').select('phone').eq('phone', phone).maybeSingle();
+      if(checkErr) throw checkErr;
+      if(existing){ setMsg('msg-customer-signup','That phone number is already registered. Try logging in instead.','err'); return; }
+
+      const { error: insertErr } = await sb.from('customers').insert({ name, phone, password: pass });
+      if(insertErr) throw insertErr;
+
+      setMsg('msg-customer-signup', 'Account created! You can log in now.', 'ok');
+      document.getElementById('signup-customer-name').value='';
+      document.getElementById('signup-customer-phone').value='';
+      document.getElementById('signup-customer-password').value='';
+      setTimeout(()=> switchCustomerTab('login'), 900);
+    }catch(err){
+      setMsg('msg-customer-signup', 'Something went wrong: ' + err.message, 'err');
+    }finally{
+      setBusy('btn-customer-signup', false, 'Create Account');
+    }
+  }
+
+  async function customerLogin(){
+    clearMsg('msg-customer-login');
+    const phone = document.getElementById('login-customer-phone').value.trim();
+    const pass = document.getElementById('login-customer-password').value;
+    if(!phone || !pass){ setMsg('msg-customer-login','Enter your phone number and password.','err'); return; }
+
+    setBusy('btn-customer-login', true);
+    try{
+      const { data, error } = await sb.from('customers').select('*').eq('phone', phone).maybeSingle();
+      if(error) throw error;
+      if(!data || data.password !== pass){ setMsg('msg-customer-login','Incorrect phone number or password.','err'); return; }
+
+      session = { role:'customer', name:data.name, phone:data.phone };
+      cart = {};
+      document.getElementById('login-customer-phone').value='';
+      document.getElementById('login-customer-password').value='';
+      openCustomerDashboard();
+    }catch(err){
+      setMsg('msg-customer-login', 'Something went wrong: ' + err.message, 'err');
+    }finally{
+      setBusy('btn-customer-login', false, 'Log In');
+    }
+  }
+
+  function openCustomerDashboard(){
+    document.getElementById('customer-dash-name').textContent = 'Hi, ' + session.name;
+    showView('view-customer-dash');
+    switchCustomerView('shop');
+    loadShopItems();
+  }
+
+  function switchCustomerView(which){
+    document.getElementById('subtab-shop').classList.toggle('active', which==='shop');
+    document.getElementById('subtab-cart').classList.toggle('active', which==='cart');
+    document.getElementById('customer-panel-shop').style.display = which==='shop' ? 'block':'none';
+    document.getElementById('customer-panel-cart').style.display = which==='cart' ? 'block':'none';
+    if(which==='cart') renderCart();
+  }
+
+  // ---------------------------------------------------------
+  // CUSTOMER: shop grid + cart
+  // ---------------------------------------------------------
+  let shopItemsCache = [];
+  let pendingQty = {}; // qty selector before "Add to Cart" is clicked
+
+  async function loadShopItems(){
+    const grid = document.getElementById('product-grid');
+    grid.innerHTML = '<div class="empty-note">Loading items…</div>';
+    const { data, error } = await sb.from('items').select('*').order('created_at', {ascending:false});
+    if(error){ grid.innerHTML = '<div class="empty-note">Could not load items: ' + error.message + '</div>'; return; }
+    shopItemsCache = data || [];
+    if(shopItemsCache.length===0){ grid.innerHTML = '<div class="empty-note">The shop has no items listed yet. Check back soon.</div>'; return; }
+
+    shopItemsCache.forEach(it => { if(!(it.id in pendingQty)) pendingQty[it.id] = 1; });
+
+    grid.innerHTML = shopItemsCache.map(item => {
+      const imgTag = item.image_url
+        ? `<img class="pimg" src="${escapeHtml(item.image_url)}" onerror="this.outerHTML='<div class=&quot;pimg placeholder&quot;>No image</div>'" />`
+        : `<div class="pimg placeholder">No image</div>`;
+      return `<div class="product-card" data-id="${item.id}">
+        ${imgTag}
+        <div class="pbody">
+          <div class="pname">${escapeHtml(item.name)}</div>
+          <div class="price-tag">${money(item.price)}</div>
+          <div class="qty-stepper">
+            <button onclick="changePendingQty('${item.id}', -1)">−</button>
+            <span class="qval" id="pqty-${item.id}">${pendingQty[item.id]}</span>
+            <button onclick="changePendingQty('${item.id}', 1)">+</button>
+          </div>
+          <button class="btn coral add-to-cart-btn" onclick="addToCart('${item.id}')">Add to Cart</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function changePendingQty(id, delta){
+    const next = Math.max(1, (pendingQty[id]||1) + delta);
+    pendingQty[id] = next;
+    const el = document.getElementById('pqty-'+id);
+    if(el) el.textContent = next;
+  }
+
+  function addToCart(id){
+    const item = shopItemsCache.find(i => i.id === id);
+    if(!item) return;
+    const qty = pendingQty[id] || 1;
+    if(cart[id]){
+      cart[id].qty += qty;
+    } else {
+      cart[id] = { name:item.name, price:item.price, image_url:item.image_url, qty };
+    }
+    pendingQty[id] = 1;
+    const qel = document.getElementById('pqty-'+id);
+    if(qel) qel.textContent = 1;
+    updateCartBadge();
+    toast(item.name + ' added to cart.');
+  }
+
+  function updateCartBadge(){
+    const count = Object.values(cart).reduce((s,c)=>s+c.qty, 0);
+    document.getElementById('cartBadge').textContent = count;
+  }
+
+  function renderCart(){
+    const list = document.getElementById('cart-list');
+    const summary = document.getElementById('cart-summary');
+    const emptyNote = document.getElementById('cart-empty-note');
+    const entries = Object.entries(cart);
+
+    if(entries.length === 0){
+      list.innerHTML = '';
+      summary.style.display = 'none';
+      emptyNote.innerHTML = '<div class="empty-note">Your cart is empty. Add a few items from the Shop tab.</div>';
+      return;
+    }
+    emptyNote.innerHTML = '';
+    summary.style.display = 'flex';
+
+    list.innerHTML = entries.map(([id, c]) => {
+      const imgTag = c.image_url
+        ? `<img class="thumb" src="${escapeHtml(c.image_url)}" onerror="this.outerHTML='<div class=&quot;thumb placeholder&quot;>No image</div>'" />`
+        : `<div class="thumb placeholder">No image</div>`;
+      return `<div class="cart-item">
+        ${imgTag}
+        <div class="ci-info">
+          <div class="nm">${escapeHtml(c.name)}</div>
+          <div class="pr">${money(c.price)} each</div>
+        </div>
+        <div class="qty-stepper">
+          <button onclick="changeCartQty('${id}', -1)">−</button>
+          <span class="qval">${c.qty}</span>
+          <button onclick="changeCartQty('${id}', 1)">+</button>
+        </div>
+        <div class="line-total">${money(c.price * c.qty)}</div>
+        <button class="remove-x" onclick="removeFromCart('${id}')">Remove</button>
+      </div>`;
+    }).join('');
+
+    const total = entries.reduce((s,[,c]) => s + c.price*c.qty, 0);
+    document.getElementById('cart-total').textContent = money(total);
+  }
+
+  function changeCartQty(id, delta){
+    if(!cart[id]) return;
+    cart[id].qty += delta;
+    if(cart[id].qty <= 0) delete cart[id];
+    updateCartBadge();
+    renderCart();
+  }
+  function removeFromCart(id){
+    delete cart[id];
+    updateCartBadge();
+    renderCart();
+  }
+
+  async function placeOrder(){
+    const entries = Object.entries(cart);
+    if(entries.length === 0){ toast('Your cart is empty.'); return; }
+
+    const items = entries.map(([id, c]) => ({ name:c.name, price:c.price, qty:c.qty }));
+    const total = entries.reduce((s,[,c]) => s + c.price*c.qty, 0);
+
+    const btn = document.getElementById('btn-place-order');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Placing order…';
+    try{
+      const { error } = await sb.from('orders').insert({
+        customer_name: session.name,
+        customer_phone: session.phone,
+        items: items,
+        total: total,
+        status: 'Placed'
+      });
+      if(error) throw error;
+      cart = {};
+      updateCartBadge();
+      renderCart();
+      toast('Order placed! The shop owner can now see it.');
+    }catch(err){
+      toast('Could not place order: ' + err.message);
+    }finally{
+      btn.disabled = false; btn.textContent = 'Place Order';
+    }
+  }
+</script>
+</body>
+</html>
